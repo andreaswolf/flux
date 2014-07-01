@@ -68,11 +68,19 @@ class ContentService implements SingletonInterface {
 	 */
 	public function pasteAfter($command, array &$row, $parameters, DataHandler $tceMain) {
 		$id = $row['uid'];
+		$relativeUid = NULL;
 		if (1 < substr_count($parameters[1], '-')) {
-			list ($pid, $subCommand, $relativeUid, $parentUid, $possibleArea, $possibleColPos) = explode('-', $parameters[1]);
+			// we're doing a paste operation
+			list ($parentPage, $subCommand, $relUid, $parentUid, $possibleArea, $possibleColPos) = explode('-', $parameters[1]);
 			$parentUid = intval($parentUid);
-			$relativeUid = 0 - $relativeUid;
+			if ($relUid != '') {
+				// relative uids are negative; if uid is 0, the element is inserted at the beginning of the page
+				$relativeUid = 0 - (int)$relUid;
+			}
 		} else {
+			// TODO what operation is done here?
+			// TODO where does $relativeUid come from? Class TYPO3\CMS\Backend\Clipboard only uses table and uid
+			// TODO why $pid?
 			list ($tablename, $pid, $relativeUid) = $parameters;
 		}
 		$mappingArray = array();
@@ -91,17 +99,47 @@ class ContentService implements SingletonInterface {
 		}
 
 		foreach ($mappingArray as $copyFromUid => $record) {
-			if (0 > $relativeUid) {
-				$relativeRecord = $this->loadRecordFromDatabase(abs($relativeUid), $record['sys_language_uid']);
+			$currentRecordIsRootOfCopiedTree = ($record['t3_origuid'] == $row['uid']);
+
+			if (isset($parentUid) && $parentUid > 0) {
+				// record is copied to inside a Fluidcontent record, therefore set correct column, parent etc. here
+				$parentRecord = $this->loadRecordFromDatabase($parentUid, $record['sys_language_uid']);
+
+				$record['colPos'] = self::COLPOS_FLUXCONTENT;
+				$record['tx_flux_column'] = $possibleArea;
+				$record['tx_flux_parent'] = $parentRecord['uid'];
+			} else {
+				// only touch the record if it is the root of the copied object tree – all other records
+				// are adjusted automatically by DataHandler and should not be further touched
+				if ($currentRecordIsRootOfCopiedTree && $relativeUid !== NULL) {
+					// copy the record to a position related to an existing element
+					if ($relativeUid >= 0) {
+						// insert on page $relativeUid – could also be the root page (uid 0)
+						$record['sorting'] = 0;
+						$record['pid'] = $parentPage;
+						$record['colPos'] = 0; // TODO set column if passed in
+						$record['tx_flux_column'] = '';
+						$record['tx_flux_parent'] = 0;
+					} else if ($relativeUid < 0) {
+						// insert after element abs($relativeUid)
+						$relativeRecord = $this->loadRecordFromDatabase(abs($relativeUid), $record['sys_language_uid']);
+
+						$record['sorting'] = $tceMain->resorting('tt_content', $relativeRecord['pid'], 'sorting', $relativeRecord['uid']);
+						$record['pid'] = $relativeRecord['pid'];
+						$record['colPos'] = $relativeRecord['colPos'];
+						$record['tx_flux_column'] = $relativeRecord['tx_flux_column'];
+						$record['tx_flux_parent'] = $relativeRecord['tx_flux_parent'];
+					}
+				}
 			}
 
-			if (FALSE === empty($possibleArea) || FALSE === empty($record['tx_flux_column'])) {
+			/* else if (FALSE === empty($possibleArea) || FALSE === empty($record['tx_flux_column'])) {
 				if ($copyFromUid === $parentUid) {
 					$record['tx_flux_parent'] = $parentUid;
 					if (0 > $relativeUid) {
 						$record['sorting'] = $tceMain->resorting('tt_content', $relativeRecord['pid'], 'sorting', $relativeRecord['uid']);
 					}
-				} else {
+				} else if ($parentUid > 0) {
 					$parentRecord = $this->loadRecordFromDatabase($parentUid, $record['sys_language_uid']);
 					if ($copyFromUid === intval($parentRecord['uid'])) {
 						$record['tx_flux_parent'] = $parentRecord['uid'];
@@ -119,13 +157,8 @@ class ContentService implements SingletonInterface {
 					$record['tx_flux_column'] = $possibleArea;
 				}
 				$record['colPos'] = self::COLPOS_FLUXCONTENT;
-			} elseif (0 > $relativeUid) {
-				$record['sorting'] = $tceMain->resorting('tt_content', $relativeRecord['pid'], 'sorting', $relativeRecord['uid']);
-				$record['pid'] = $relativeRecord['pid'];
-				$record['colPos'] = $relativeRecord['colPos'];
-				$record['tx_flux_column'] = $relativeRecord['tx_flux_column'];
-				$record['tx_flux_parent'] = $relativeRecord['tx_flux_parent'];
 			} elseif (0 <= $relativeUid) {
+				// insert at the beginning of the page
 				$record['sorting'] = 0;
 				$record['pid'] = $relativeUid;
 				$record['tx_flux_column'] = '';
@@ -141,7 +174,7 @@ class ContentService implements SingletonInterface {
 				$record['tx_flux_parent'] = 0;
 				$record['tx_flux_column'] = '';
 			}
-			$record['tx_flux_parent'] = intval($record['tx_flux_parent']);
+			$record['tx_flux_parent'] = intval($record['tx_flux_parent']);*/
 			$this->updateRecordInDatabase($record, NULL, $tceMain);
 			$tceMain->registerDBList['tt_content'][$record['uid']];
 		}
