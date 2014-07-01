@@ -1,0 +1,9 @@
+"pages",
+,"uid","pid","title"
+,"100","0","first page"
+,"101","0","second page (paste target)"
+"tt_content",
+,"uid","pid","CType","sorting","colPos","header","tx_flux_column","tx_flux_parent"
+,"200","100","fluidcontent_content","128","0","fluidcontent element","","0"
+,"201","100","text","256","18181","text element in fluidcontent","headline","200"
+,"202","100","text","512","0","text element on page after content","","0"
