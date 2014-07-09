@@ -139,9 +139,7 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
 		// TODO assert correct sorting
-		$this->assertEquals(0, $newRecord['colPos'], 'New content in wrong page column');
-		$this->assertSame('0', $newRecord['tx_flux_parent'], 'New content still in Flux container');
-		$this->assertSame('', $newRecord['tx_flux_column'], 'New content in wrong Flux column');
+		$this->assertContentNotInFluxElement($newRecord);
 	}
 
 	/**
@@ -156,9 +154,7 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		$this->assertEquals(18181, $newRecord['colPos'], 'New content in wrong page column');
-		$this->assertEquals(self::FLUIDCONTENT_CONTAINER_ID, $newRecord['tx_flux_parent'], 'New content not in Flux container');
-		$this->assertSame('column2', $newRecord['tx_flux_column'], 'New content in wrong Flux column');
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'column2', $newRecord);
 	}
 
 	/**
@@ -173,9 +169,7 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		$this->assertEquals(18181, $newRecord['colPos'], 'New content in wrong page column');
-		$this->assertEquals(self::FLUIDCONTENT_CONTAINER_ID, $newRecord['tx_flux_parent'], 'New content not in Flux container');
-		$this->assertSame('headline', $newRecord['tx_flux_column'], 'New content in wrong Flux column');
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'headline', $newRecord);
 	}
 
 	/**
@@ -190,9 +184,7 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		$this->assertEquals(18181, $newRecord['colPos'], 'New content in wrong page column' . print_r($newRecord, TRUE));
-		$this->assertEquals(self::FLUIDCONTENT_CONTAINER_ID, $newRecord['tx_flux_parent'], 'New content not in Flux container');
-		$this->assertSame('column1', $newRecord['tx_flux_column'], 'New content in wrong Flux column');
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'column1', $newRecord);
 	}
 
 	/**
@@ -207,9 +199,7 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		$this->assertEquals(18181, $newRecord['colPos'], 'New content in wrong page column');
-		$this->assertEquals(self::FLUIDCONTENT_CONTAINER_ID, $newRecord['tx_flux_parent'], 'New content not in Flux container');
-		$this->assertSame('headline', $newRecord['tx_flux_column'], 'New content in wrong Flux column');
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'headline', $newRecord);
 	}
 
 	/**
@@ -227,13 +217,8 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 		$newContainerRecord = BackendUtility::getRecord('tt_content', $newContainerId);
 		$newContentRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		$this->assertEquals(0, $newContainerRecord['colPos'], 'Copied container in wrong page column');
-		$this->assertEquals(0, $newContainerRecord['tx_flux_parent'], 'Copied container is in (another) Flux container');
-		$this->assertSame('', $newContainerRecord['tx_flux_column'], 'Copied content in wrong Flux column');
-
-		$this->assertEquals(18181, $newContentRecord['colPos'], 'Copied content in wrong page column');
-		$this->assertEquals($newContainerRecord['uid'], $newContentRecord['tx_flux_parent'], 'Copied content not in new Flux container');
-		$this->assertSame('headline', $newContentRecord['tx_flux_column'], 'Copied content in wrong Flux column');
+		$this->assertContentNotInFluxElement($newContainerRecord);
+		$this->assertContentInFluxElement($newContainerRecord['uid'], 'headline', $newContentRecord);
 	}
 
 	/**
