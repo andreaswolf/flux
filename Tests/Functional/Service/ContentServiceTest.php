@@ -40,6 +40,9 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	const FLUIDCONTENT_CONTAINER_ID = 200;
 	const FLUIDCONTENT_CONTENT_ID = 201;
 	const CONTENT_ID = 202;
+	const FLUIDCONTENT_NESTED_OUTER_CONTAINER_ID = 300;
+	const FLUIDCONTENT_NESTED_INNER_CONTAINER_ID = 301;
+	const FLUIDCONTENT_NESTED_INNER_CONTENT_ID = 302;
 
 	public function setUp() {
 		parent::setUp();
@@ -50,6 +53,9 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	}
 
 	/**
+	 * Sets $_GET['CB'] (ClipBoard) to initiate a paste operation of the records processed by DataHandler to
+	 * the given page and position.
+	 *
 	 * @param string $table The table to paste the contents in
 	 * @param int $targetPageId The target page id.
 	 * @param int $relatedContentId The ID of the related element (= the element to paste after). If 0, element is inserted at the top of the column.
@@ -93,6 +99,31 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	 */
 	protected function pasteContentToFluidcontentColumn($targetPageId, $targetContainerElementId, $targetColumnId) {
 		$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, 0, $targetContainerElementId, $targetColumnId);
+	}
+
+	/**
+	 * Tests if a record is not inside a flux element.
+	 *
+	 * @param array $actualRecord
+	 */
+	protected function assertContentNotInFluxElement($actualRecord) {
+		// only test if colPos is not 18181 (the Flux colPos value) because colPos might be any other value
+		$this->assertNotEquals(18181, $actualRecord['colPos'], 'Element is in Flux colPos');
+		$this->assertEquals(0, $actualRecord['tx_flux_parent'], 'Element is in Flux container');
+		$this->assertSame('', $actualRecord['tx_flux_column'], 'Element is in a column inside a Flux container');
+	}
+
+	/**
+	 * Tests if a content record is in the right column inside the given flux element.
+	 *
+	 * @param int $expectedParentId
+	 * @param string $expectedColumn
+	 * @param array $actualRecord
+	 */
+	protected function assertContentInFluxElement($expectedParentId, $expectedColumn, $actualRecord) {
+		$this->assertEquals(18181, $actualRecord['colPos'], 'Element is in Flux column');
+		$this->assertEquals($expectedParentId, $actualRecord['tx_flux_parent'], 'Element is in Flux container');
+		$this->assertSame($expectedColumn, $actualRecord['tx_flux_column'], 'Element is in Flux column');
 	}
 
 	/**
@@ -203,6 +234,28 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 		$this->assertEquals(18181, $newContentRecord['colPos'], 'Copied content in wrong page column');
 		$this->assertEquals($newContainerRecord['uid'], $newContentRecord['tx_flux_parent'], 'Copied content not in new Flux container');
 		$this->assertSame('headline', $newContentRecord['tx_flux_column'], 'Copied content in wrong Flux column');
+	}
+
+	/**
+	 * @test
+	 */
+	public function copyNestedFluidcontentElementToDifferentPage() {
+		$this->pasteContentAtBeginningOfPage(self::PAGE_ID_TARGET);
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::FLUIDCONTENT_NESTED_OUTER_CONTAINER_ID, self::PAGE_ID_TARGET);
+
+		$newOuterContainerId = $mappingArray['tt_content'][self::FLUIDCONTENT_NESTED_OUTER_CONTAINER_ID];
+		$newInnerContainerId = $mappingArray['tt_content'][self::FLUIDCONTENT_NESTED_INNER_CONTAINER_ID];
+		$newContentId = $mappingArray['tt_content'][self::FLUIDCONTENT_NESTED_INNER_CONTENT_ID];
+		$this->assertNotEmpty($newOuterContainerId);
+		$this->assertNotEmpty($newContentId);
+
+		$newOuterContainerRecord = BackendUtility::getRecord('tt_content', $newOuterContainerId);
+		$newInnerContainerRecord = BackendUtility::getRecord('tt_content', $newInnerContainerId);
+		$newContentRecord = BackendUtility::getRecord('tt_content', $newContentId);
+
+		$this->assertContentNotInFluxElement($newOuterContainerRecord);
+		$this->assertContentInFluxElement($newOuterContainerRecord['uid'], 'column1', $newInnerContainerRecord);
+		$this->assertContentInFluxElement($newInnerContainerRecord['uid'], 'headline', $newContentRecord);
 	}
 
 }
