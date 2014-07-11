@@ -94,11 +94,27 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 
 	/**
 	 * @param int $targetPageId
+	 * @param int $columnId
+	 */
+	protected function pasteContentToColumn($targetPageId, $columnId) {
+		$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, 0, 0, '', $columnId);
+	}
+
+	/**
+	 * @param int $targetPageId
 	 * @param int $targetContainerElementId
 	 * @param string $targetColumnId
 	 */
 	protected function pasteContentToFluidcontentColumn($targetPageId, $targetContainerElementId, $targetColumnId) {
 		$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, 0, $targetContainerElementId, $targetColumnId);
+	}
+
+	/**
+	 * @param int $column
+	 * @param array $actualRecord
+	 */
+	protected function assertContentInColumn($column, $actualRecord) {
+		$this->assertEquals($column, $actualRecord['colPos'], 'Element is not in correct column');
 	}
 
 	/**
@@ -200,6 +216,26 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
 		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'headline', $newRecord);
+	}
+
+	/**
+	 * @test
+	 */
+	public function copyFluidcontentElementToOtherColumnOnSamePage() {
+		$columnId = 1;
+		$this->pasteContentToColumn(self::PAGE_ID_TARGET, $columnId);
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::FLUIDCONTENT_CONTAINER_ID, self::PAGE_ID_MAIN);
+
+		$newContainerId = $mappingArray['tt_content'][self::FLUIDCONTENT_CONTAINER_ID];
+		$newContentId = $mappingArray['tt_content'][self::FLUIDCONTENT_CONTENT_ID];
+		$this->assertNotEmpty($newContainerId);
+		$this->assertNotEmpty($newContentId);
+
+		$newContainerRecord = BackendUtility::getRecord('tt_content', $newContainerId);
+		$newContentRecord = BackendUtility::getRecord('tt_content', $newContentId);
+
+		$this->assertContentInColumn($columnId, $newContainerRecord);
+		$this->assertContentInFluxElement($newContainerRecord['uid'], 'headline', $newContentRecord);
 	}
 
 	/**
