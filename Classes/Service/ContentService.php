@@ -110,6 +110,10 @@ class ContentService implements SingletonInterface {
 			}
 		}
 
+		if (!isset($possibleColPos)) {
+			$possibleColPos = 0;
+		}
+
 		foreach ($mappingArray as $copyFromUid => $record) {
 			$currentRecordIsRootOfCopiedTree = ($record['t3_origuid'] == $row['uid']);
 
@@ -132,7 +136,7 @@ class ContentService implements SingletonInterface {
 						// insert on page $relativeUid – could also be the root page (uid 0)
 						$record['sorting'] = 0;
 						$record['pid'] = $parentPage;
-						$record['colPos'] = 0; // TODO set column if passed in
+						$record['colPos'] = $possibleColPos;
 						$record['tx_flux_column'] = '';
 						$record['tx_flux_parent'] = 0;
 					} else if ($relativeUid < 0) {
