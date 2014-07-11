@@ -106,7 +106,10 @@ class ContentService implements SingletonInterface {
 				$parentRecord = $this->loadRecordFromDatabase($parentUid, $record['sys_language_uid']);
 
 				$record['colPos'] = self::COLPOS_FLUXCONTENT;
-				$record['tx_flux_column'] = $possibleArea;
+				if ($currentRecordIsRootOfCopiedTree) {
+					// only the topmost record has to be relocated, all others will be adjusted automatically
+					$record['tx_flux_column'] = $possibleArea;
+				}
 				$record['tx_flux_parent'] = $parentRecord['uid'];
 			} else {
 				// only touch the record if it is the root of the copied object tree – all other records

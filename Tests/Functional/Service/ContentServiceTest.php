@@ -205,6 +205,25 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	/**
 	 * @test
 	 */
+	public function copyFluidcontentElementToColumnInOtherFluidcontentElement() {
+		$this->pasteContentToFluidcontentColumn(self::PAGE_ID_TARGET, self::FLUIDCONTENT_CONTAINER_ID, 'targetColumn');
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::FLUIDCONTENT_CONTAINER_ID, self::PAGE_ID_TARGET);
+
+		$newContainerId = $mappingArray['tt_content'][self::FLUIDCONTENT_CONTAINER_ID];
+		$newContentId = $mappingArray['tt_content'][self::FLUIDCONTENT_CONTENT_ID];
+		$this->assertNotEmpty($newContainerId);
+		$this->assertNotEmpty($newContentId);
+
+		$newContainerRecord = BackendUtility::getRecord('tt_content', $newContainerId);
+		$newContentRecord = BackendUtility::getRecord('tt_content', $newContentId);
+
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'targetColumn', $newContainerRecord);
+		$this->assertContentInFluxElement($newContainerRecord['uid'], 'headline', $newContentRecord);
+	}
+
+	/**
+	 * @test
+	 */
 	public function copyFluidcontentElementToDifferentPage() {
 		$this->pasteContentAtBeginningOfPage(self::PAGE_ID_TARGET);
 		$mappingArray = $this->actionService->copyRecord('tt_content', self::FLUIDCONTENT_CONTAINER_ID, self::PAGE_ID_TARGET);
