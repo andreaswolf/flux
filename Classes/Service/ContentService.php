@@ -109,12 +109,14 @@ class ContentService implements SingletonInterface {
 				// record is copied to inside a Fluidcontent record, therefore set correct column, parent etc. here
 				$parentRecord = $this->loadRecordFromDatabase($parentUid, $record['sys_language_uid']);
 
+				// the colPos has to be adjusted for all copied elements (as DataHandler has reset it)
 				$record['colPos'] = self::COLPOS_FLUXCONTENT;
+				$record['tx_flux_parent'] = $parentRecord['uid'];
 				if ($currentRecordIsRootOfCopiedTree) {
 					// only the topmost record has to be relocated, all others will be adjusted automatically
 					$record['tx_flux_column'] = $possibleArea;
+					$record['sorting'] = $tceMain->resorting('tt_content', $record['pid'], 'sorting', abs($relativeUid));
 				}
-				$record['tx_flux_parent'] = $parentRecord['uid'];
 			} else {
 				// only touch the record if it is the root of the copied object tree – all other records
 				// are adjusted automatically by DataHandler and should not be further touched

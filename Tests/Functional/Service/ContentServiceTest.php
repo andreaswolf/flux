@@ -39,7 +39,8 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	const PAGE_ID_TARGET = 101;
 	const FLUIDCONTENT_CONTAINER_ID = 200;
 	const FLUIDCONTENT_CONTENT_ID = 201;
-	const CONTENT_ID = 202;
+	const CONTENT_ID_ABOVE = 203;
+	const CONTENT_ID_BELOW = 202;
 	const FLUIDCONTENT_NESTED_OUTER_CONTAINER_ID = 300;
 	const FLUIDCONTENT_NESTED_INNER_CONTAINER_ID = 301;
 	const FLUIDCONTENT_NESTED_INNER_CONTENT_ID = 302;
@@ -82,7 +83,12 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	 * @param int $targetContentId
 	 */
 	protected function pasteContentAfterOtherContentElement($targetPageId, $targetContentId) {
-		$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, $targetContentId);
+		$record = BackendUtility::getRecord('tt_content', $targetContentId);
+		if ($record['tx_flux_parent'] > 0) {
+			$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, $targetContentId, $record['tx_flux_parent'], $record['tx_flux_column']);
+		} else {
+			$this->createGetEntryForClipboardPasteOperation('tt_content', $targetPageId, $targetContentId);
+		}
 	}
 
 	/**
@@ -115,6 +121,14 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	 */
 	protected function assertContentInColumn($column, $actualRecord) {
 		$this->assertEquals($column, $actualRecord['colPos'], 'Element is not in correct column');
+	}
+
+	/**
+	 * @param array $content The content that should be sorted below the next content
+	 * @param array $contentAbove
+	 */
+	protected function assertContentIsSortedBelowOtherContent($content, $contentAbove) {
+		$this->assertGreaterThan($contentAbove['sorting'], $content['sorting']);
 	}
 
 	/**
@@ -152,9 +166,10 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 		$newContentId = $mappingArray['tt_content'][self::FLUIDCONTENT_CONTENT_ID];
 		$this->assertNotEmpty($newContentId);
 
+		$containerRecord = BackendUtility::getRecord('tt_content', self::FLUIDCONTENT_CONTAINER_ID);
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
-		// TODO assert correct sorting
+		$this->assertContentIsSortedBelowOtherContent($newRecord, $containerRecord);
 		$this->assertContentNotInFluxElement($newRecord);
 	}
 
@@ -193,9 +208,9 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	 */
 	public function copyFromPageToColumnInFluidcontentElement() {
 		$this->pasteContentToFluidcontentColumn(self::PAGE_ID_MAIN, self::FLUIDCONTENT_CONTAINER_ID, 'column1');
-		$mappingArray = $this->actionService->copyRecord('tt_content', self::CONTENT_ID, self::PAGE_ID_MAIN);
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::CONTENT_ID_BELOW, self::PAGE_ID_MAIN);
 
-		$newContentId = $mappingArray['tt_content'][self::CONTENT_ID];
+		$newContentId = $mappingArray['tt_content'][self::CONTENT_ID_BELOW];
 		$this->assertGreaterThan(0, $newContentId);
 
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
@@ -206,15 +221,36 @@ class ContentServiceTest extends AbstractDataHandlerActionTestCase {
 	/**
 	 * @test
 	 */
-	public function copyFromPageToAfterElementInFluidcontentElement() {
-		$this->pasteContentAfterOtherContentElement(self::PAGE_ID_MAIN, self::FLUIDCONTENT_CONTENT_ID);
-		$mappingArray = $this->actionService->copyRecord('tt_content', self::CONTENT_ID, 0 - self::FLUIDCONTENT_CONTENT_ID);
+	public function copyFromPageToPositionAtTopOfFluidcontentColumn() {
+		$this->pasteContentToFluidcontentColumn(self::PAGE_ID_MAIN, self::FLUIDCONTENT_CONTAINER_ID, 'headline');
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::CONTENT_ID_BELOW, self::PAGE_ID_MAIN);
 
-		$newContentId = $mappingArray['tt_content'][self::CONTENT_ID];
+		$newContentId = $mappingArray['tt_content'][self::CONTENT_ID_BELOW];
 		$this->assertNotEmpty($newContentId);
 
+		$existingRecord = BackendUtility::getRecord('tt_content', self::FLUIDCONTENT_CONTENT_ID);
 		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
 
+		$this->assertContentIsSortedBelowOtherContent($existingRecord, $newRecord);
+		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'headline', $newRecord);
+	}
+
+	/**
+	 * @test
+	 */
+	public function copyFromPageToPositionAfterElementInFluidcontentColumn() {
+		$this->pasteContentAfterOtherContentElement(self::PAGE_ID_MAIN, self::FLUIDCONTENT_CONTENT_ID);
+		$mappingArray = $this->actionService->copyRecord('tt_content', self::CONTENT_ID_ABOVE, self::PAGE_ID_MAIN);
+
+		$newContentId = $mappingArray['tt_content'][self::CONTENT_ID_ABOVE];
+		$this->assertNotEmpty($newContentId);
+
+		$existingRecord = BackendUtility::getRecord('tt_content', self::FLUIDCONTENT_CONTENT_ID);
+		$newRecord = BackendUtility::getRecord('tt_content', $newContentId);
+
+		//$this->assertFalse(print_r($newRecord, TRUE));
+		//$this->assertFalse($newRecord['header'] . ' ' . $newRecord['sorting'] . ' ' . $existingRecord['sorting']);
+		$this->assertContentIsSortedBelowOtherContent($newRecord, $existingRecord);
 		$this->assertContentInFluxElement(self::FLUIDCONTENT_CONTAINER_ID, 'headline', $newRecord);
 	}
 
