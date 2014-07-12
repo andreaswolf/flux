@@ -71,8 +71,8 @@ class ContentService implements SingletonInterface {
 		$relativeUid = NULL;
 		if (1 < substr_count($parameters[1], '-')) {
 			// we're doing a paste operation
-			list ($parentPage, $subCommand, $relUid, $parentUid, $possibleArea, $possibleColPos) = explode('-', $parameters[1]);
-			$parentUid = intval($parentUid);
+			list ($parentPage, $subCommand, $relUid, $targetFluxElement, $targetFluxColumn, $targetColPos) = explode('-', $parameters[1]);
+			$targetFluxElement = intval($targetFluxElement);
 			if ($relUid != '') {
 				// relative uids are negative; if uid is 0, the element is inserted at the beginning of the page
 				$relativeUid = 0 - (int)$relUid;
@@ -98,23 +98,23 @@ class ContentService implements SingletonInterface {
 			}
 		}
 
-		if (!isset($possibleColPos)) {
-			$possibleColPos = 0;
+		if (!isset($targetColPos)) {
+			$targetColPos = 0;
 		}
 
 		foreach ($mappingArray as $copyFromUid => $record) {
 			$currentRecordIsRootOfCopiedTree = ($record['t3_origuid'] == $row['uid']);
 
-			if (isset($parentUid) && $parentUid > 0) {
+			if (isset($targetFluxElement) && $targetFluxElement > 0) {
 				// record is copied to inside a Fluidcontent record, therefore set correct column, parent etc. here
-				$parentRecord = $this->loadRecordFromDatabase($parentUid, $record['sys_language_uid']);
+				$parentRecord = $this->loadRecordFromDatabase($targetFluxElement, $record['sys_language_uid']);
 
 				// the colPos has to be adjusted for all copied elements (as DataHandler has reset it)
 				$record['colPos'] = self::COLPOS_FLUXCONTENT;
 				$record['tx_flux_parent'] = $parentRecord['uid'];
 				if ($currentRecordIsRootOfCopiedTree) {
 					// only the topmost record has to be relocated, all others will be adjusted automatically
-					$record['tx_flux_column'] = $possibleArea;
+					$record['tx_flux_column'] = $targetFluxColumn;
 					$record['sorting'] = $tceMain->resorting('tt_content', $record['pid'], 'sorting', abs($relativeUid));
 				}
 			} else {
@@ -126,7 +126,7 @@ class ContentService implements SingletonInterface {
 						// insert on page $relativeUid – could also be the root page (uid 0)
 						$record['sorting'] = 0;
 						$record['pid'] = $parentPage;
-						$record['colPos'] = $possibleColPos;
+						$record['colPos'] = $targetColPos;
 						$record['tx_flux_column'] = '';
 						$record['tx_flux_parent'] = 0;
 					} else if ($relativeUid < 0) {
